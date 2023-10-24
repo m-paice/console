@@ -5,6 +5,7 @@ import { getWebcontainerInstance } from "./lib/web-container";
 import { Editor } from "./components/Editor";
 
 const ANSIConvert = new ANSIToHTML();
+const regex = /from\s+["']([^"']+)["']/g;
 
 function App() {
   const [code, setCode] = useState("console.log('testando web container');");
@@ -14,6 +15,14 @@ function App() {
   const handleRunCode = async () => {
     setOutput([]);
     setRunning(true);
+
+    const dependencies = [];
+
+    let match;
+    while ((match = regex.exec(code)) !== null) {
+      const conteudoDoFrom = match[1];
+      dependencies.push(conteudoDoFrom);
+    }
 
     const files = {
       "index.js": {
@@ -27,9 +36,12 @@ function App() {
             {
               "name": "example-app",
               "type": "module",
-              "dependencies": {
-                "axios": "latest",
-                "date-fns": "latest"
+              "dependencies": ${
+                dependencies.length > 0
+                  ? `{
+                ${dependencies.map((item) => `"${item}":"latest"`).join(",")}
+              }`
+                  : "{}"
               },
               "scripts": {
                 "start": "node './' index.js"
@@ -39,7 +51,9 @@ function App() {
       },
     };
 
-    setOutput(["Installing all dependencies!"]);
+    setOutput([
+      `🔥 Installing all dependencies -> [${dependencies.join(",")}]`,
+    ]);
 
     const instance = await getWebcontainerInstance();
     await instance.mount(files);
@@ -54,7 +68,7 @@ function App() {
     );
     await installProcess.exit;
 
-    setOutput((prevState) => [...prevState, "Running code!"]);
+    setOutput((prevState) => [...prevState, "🚀 Running code!"]);
 
     const start = await instance.spawn("npm", ["start"]);
     start.output.pipeTo(
